@@ -1,6 +1,6 @@
 # Azure Cost Monitoring mit Azure Functions
 
-Dieses Projekt dokumentiert meinen Einstieg in die Kostenoptimierung und Automatisierung in Azure. Ziel war es, Azure-Kosten fruehzeitig sichtbar zu machen, Grenzwerte zu definieren und monatlich automatisiert einen Kostenbericht per E-Mail zu verschicken.
+Dieses Projekt dokumentiert meinen Einstieg in die Kostenoptimierung und Automatisierung in Azure. Ziel war es, Azure-Kosten frühzeitig sichtbar zu machen, Grenzwerte zu definieren und monatlich automatisiert einen Kostenbericht per E-Mail zu verschicken.
 
 Dabei habe ich nicht nur mit Azure Cost Management gearbeitet, sondern auch mit Budgets, Arbeitsmappen, Azure Functions, Managed Identities und Azure Communication Services. Ein grosser Teil des Projekts bestand ausserdem aus Troubleshooting, weil viele Probleme nicht direkt im Code lagen, sondern in der Konfiguration und im Zusammenspiel mehrerer Azure-Ressourcen.
 
@@ -24,20 +24,20 @@ In Azure Cost Management koennen Budgets nicht nur fuer das komplette Abonnement
 - Regionen
 - Tags
 
-Das ist wichtig, weil eine Budgetwarnung nicht automatisch fuer alles gelten muss, was in Azure passiert. Je nach Ziel kann man bewusst entscheiden, ob man ein gesamtes Abonnement ueberwachen will oder nur ein einzelnes Projekt. Fuer ein konkretes Projekt ist eine Eingrenzung auf eine Ressourcengruppe oder ein klar abgegrenztes Kostenobjekt meistens sinnvoller.
+Das ist wichtig, weil eine Budgetwarnung nicht automatisch fuer alles gelten muss, was in Azure passiert. Je nach Ziel kann man bewusst entscheiden, ob man ein gesamtes Abonnement ueberwachen will oder nur ein einzelnes Projekt. Für ein konkretes Projekt ist eine Eingrenzung auf eine Ressourcengruppe oder ein klar abgegrenztes Kostenobjekt meistens sinnvoller.
 
 ### 2. Kostenanalyse und Visualisierung
 
-Der einfachste Einstieg in die Kostenanalyse ist ueber die Azure-Suche mit dem Begriff `Kostenanalyse`. Dort kann man direkt filtern, gruppieren und die Kostenentwicklung zeitlich auswerten.
+Der einfachste Einstieg in die Kostenanalyse ist über die Azure-Suche mit dem Begriff `Kostenanalyse`. Dort kann man direkt filtern, gruppieren und die Kostenentwicklung zeitlich auswerten.
 
-Fuer eine uebersichtlichere Darstellung sind ausserdem Arbeitsmappen hilfreich. Mit ihnen lassen sich eigene Ansichten aufbauen, zum Beispiel:
+Für eine übersichtlichere Darstellung sind ausserdem Arbeitsmappen hilfreich. Mit ihnen lassen sich eigene Ansichten aufbauen, zum Beispiel:
 
 - Kosten nach Service
 - Kosten nach Ressourcengruppe
 - Kostenentwicklung ueber Tage, Wochen oder Monate
 - Vergleich einzelner Workloads
 
-Wenn man eine komplette technische Uebersicht ueber alle Ressourcen braucht, ist der Ressourcen-Manager hilfreich. Dort sieht man schnell, welche Ressourcen wirklich existieren und wo potenzielle Kostentreiber liegen.
+Wenn man eine komplette technische Übersicht über alle Ressourcen braucht, ist der Ressourcen-Manager hilfreich. Dort sieht man schnell, welche Ressourcen wirklich existieren und wo potenzielle Kostentreiber liegen.
 
 ## Automatisierung mit der Function App
 
@@ -45,7 +45,7 @@ Ein zentraler Teil des Projekts war eine Azure Function, die automatisch Kostend
 
 ### Warum Azure Functions?
 
-Azure Functions sind fuer dieses Szenario sinnvoll, weil sie:
+Azure Functions sind für dieses Szenario sinnvoll, weil sie:
 
 - serverlos laufen
 - nur bei Ausfuehrung Ressourcen verbrauchen
@@ -58,7 +58,7 @@ Im Projekt wurden zwei Varianten betrachtet:
 
 #### Flex Consumption
 
-Flex Consumption ist die modernere und von Microsoft aktiv unterstuetzte Variante. Der Vorteil liegt vor allem in der besseren Verfuegbarkeit und einer stabileren Grundlage fuer produktive Nutzung.
+Flex Consumption ist die modernere und von Microsoft aktiv unterstützte Variante. Der Vorteil liegt vor allem in der besseren Verfügbarkeit und einer stabileren Grundlage für produktive Nutzung.
 
 Der Nachteil ist, dass die Einrichtung am Anfang aufwendiger ist. Man braucht eine lokale Entwicklungsumgebung mit Visual Studio Code, Azure Functions Core Tools, einer funktionierenden Projektstruktur und einem sauberen Deployment-Prozess.
 
@@ -66,11 +66,11 @@ Trotzdem ist Flex Consumption langfristig die bessere Wahl, weil man damit profe
 
 #### Windows Consumption
 
-Windows Consumption wirkt auf den ersten Blick einfacher, weil man dort den Code leichter direkt im Azure-Portal bearbeiten kann. In der Praxis war dieses Modell fuer mich aber weniger zuverlaessig, weil die Function App zeitweise nicht erreichbar war.
+Windows Consumption wirkt auf den ersten Blick einfacher, weil man dort den Code leichter direkt im Azure-Portal bearbeiten kann. In der Praxis war dieses Modell für mich aber weniger zuverlässig, weil die Function App zeitweise nicht erreichbar war.
 
 ### Mein Fazit zur Auswahl
 
-Fuer erste Tests kann Windows Consumption einfacher wirken. Wenn man aber professioneller und reproduzierbarer arbeiten moechte, ist Flex Consumption klar die bessere Loesung.
+Für erste Tests kann Windows Consumption einfacher wirken. Wenn man aber professioneller und reproduzierbarer arbeiten möchte, ist Flex Consumption klar die bessere Loesung.
 
 ## Wie der automatische Kostenbericht funktioniert
 
@@ -85,13 +85,13 @@ Die Werte in der E-Mail werden direkt im Code der Function App erzeugt. Dort pas
 
 Das bedeutet auch: Wenn ich den Inhalt der E-Mail anpassen moechte, muss ich die Function selbst anpassen. Genau dort werden die Werte erzeugt, gefiltert und dargestellt.
 
-## Die groessten Probleme im Projekt
+## Die größten Probleme im Projekt
 
 Der schwierigste Teil war nicht das Schreiben des Codes, sondern die saubere Konfiguration der Azure-Ressourcen.
 
 ### 1. Zu viele Resources erstellt
 
-Mein groesster Fehler war, zu viele aehnliche Ressourcen anzulegen und diese nicht frueh genug wieder zu loeschen. Dadurch wurde es sehr unuebersichtlich, welche Communication Services Ressource, welcher Email Service und welche Domain wirklich zusammengehoeren.
+Mein größter Fehler war, zu viele ähnliche Ressourcen anzulegen und diese nicht früh genug wieder zu löschen. Dadurch wurde es sehr unübersichtlich, welche Communication Services Ressource, welcher Email Service und welche Domain wirklich zusammengehören.
 
 Die Folge waren typische Konfigurationsfehler:
 
@@ -114,8 +114,8 @@ wirklich korrekt war.
 Ein wichtiger Lernpunkt war, dass Communication Services und Email Communication Services nicht dasselbe sind.
 
 - Die Domain wird im Email Communication Service bereitgestellt
-- Der Versand selbst wird ueber die Communication Services Ressource angesteuert
-- Beide muessen korrekt miteinander verbunden sein
+- Der Versand selbst wird über die Communication Services Ressource angesteuert
+- Beide müssen korrekt miteinander verbunden sein
 
 Wenn diese Zuordnung nicht passt, entstehen Fehler wie:
 
@@ -125,13 +125,13 @@ Wenn diese Zuordnung nicht passt, entstehen Fehler wie:
 
 ### 3. Ressourcenanbieter aktivieren
 
-Ein weiterer technischer Punkt war die Aktivierung von Ressourcenanbietern auf Abonnement-Ebene. Manche Funktionen in Azure stehen erst zur Verfuegung, wenn der entsprechende Provider registriert wurde.
+Ein weiterer technischer Punkt war die Aktivierung von Ressourcenanbietern auf Abonnement-Ebene. Manche Funktionen in Azure stehen erst zur Verfügung, wenn der entsprechende Provider registriert wurde.
 
-Das ist ein Punkt, den man leicht uebersieht, der aber gerade bei neuen Services sehr wichtig ist.
+Das ist ein Punkt, den man leicht übersieht, der aber gerade bei neuen Services sehr wichtig ist.
 
 ### 4. Identitaet und Rollen
 
-Die Function App musste eine verwaltete Identitaet erhalten, damit sie sicher auf Azure-Dienste zugreifen kann. Zusaetzlich musste die passende Rolle vergeben werden, in meinem Fall insbesondere:
+Die Function App musste eine verwaltete Identität erhalten, damit sie sicher auf Azure-Dienste zugreifen kann. Zusätzlich musste die passende Rolle vergeben werden, in meinem Fall insbesondere:
 
 - `Kostenverwaltungsleser`
 
@@ -147,11 +147,11 @@ Damit der Code funktioniert, mussten in der Function App mehrere Umgebungsvariab
 - `COMMUNICATION_SERVICES_CONNECTION_STRING`
 - `ACS_EMAIL_FROM`
 
-Gerade bei `ACS_EMAIL_FROM` wurde deutlich, wie wichtig exakte Werte sind. Schon kleine Unterschiede oder ein falscher Bezug auf die falsche Domain fuehren dazu, dass der E-Mail-Versand scheitert.
+Gerade bei `ACS_EMAIL_FROM` wurde deutlich, wie wichtig exakte Werte sind. Schon kleine Unterschiede oder ein falscher Bezug auf die falsche Domain führen dazu, dass der E-Mail-Versand scheitert.
 
 ## Was ich aus dem Projekt gelernt habe
 
-Das Projekt hat mir gezeigt, dass Cloud Engineering nicht nur aus dem Erstellen von Ressourcen besteht. Viel wichtiger ist das Verstaendnis fuer das Zusammenspiel von:
+Das Projekt hat mir gezeigt, dass Cloud Engineering nicht nur aus dem Erstellen von Ressourcen besteht. Viel wichtiger ist das Verständnis für das Zusammenspiel von:
 
 - Infrastruktur
 - Konfiguration
@@ -162,75 +162,6 @@ Das Projekt hat mir gezeigt, dass Cloud Engineering nicht nur aus dem Erstellen 
 - Troubleshooting
 
 Viele Probleme waren am Ende keine Programmierfehler, sondern Konfigurations- oder Architekturfehler. Genau das macht Cloud-Arbeit in der Praxis anspruchsvoll.
-
-## Was ich unbedingt noch wissen und vertiefen sollte, wenn ich Richtung Cloud Engineering gehen will
-
-### 1. Identitaeten und Berechtigungen
-
-Ein Cloud Engineer muss sicher verstehen:
-
-- welche Identitaet ein Dienst verwendet
-- welche Rollen notwendig sind
-- auf welcher Ebene diese Rollen vergeben werden
-- wie sich fehlende Rechte in Logs und Fehlermeldungen zeigen
-
-Das Thema IAM ist eine der wichtigsten Grundlagen ueberhaupt.
-
-### 2. Saubere Struktur von Ressourcen
-
-Ressourcen muessen klar benannt, gruppiert und getrennt werden. Sobald zu viele aehnliche Ressourcen parallel existieren, wird Troubleshooting unnötig kompliziert.
-
-Wichtige Punkte dabei sind:
-
-- klares Namensschema
-- saubere Ressourcengruppen
-- Test- und Produktivressourcen trennen
-- alte Ressourcen konsequent bereinigen
-
-### 3. Zusammenspiel von Portal und Code
-
-Cloud Engineering bedeutet fast nie nur klicken und fast nie nur programmieren. Die eigentliche Arbeit entsteht aus der Verbindung von:
-
-- Plattformkonfiguration im Portal oder per IaC
-- Logik im Code
-- sicherer Verwaltung von Konfigurationen und Geheimnissen
-
-### 4. APIs verstehen
-
-Ein wichtiger Schritt Richtung Cloud Engineering ist, Dienste nicht nur im Portal zu benutzen, sondern auch ueber APIs zu verstehen und zu automatisieren.
-
-In diesem Projekt waren das vor allem:
-
-- Azure Cost Management API
-- Authentifizierung ueber Managed Identity
-- Azure Communication Services Email API
-
-### 5. Monitoring und Troubleshooting
-
-Ein grosser Teil echter Cloud-Arbeit besteht aus Fehleranalyse. Deshalb sollte ich weiter ueben:
-
-- Logs sauber zu lesen
-- Fehlerursachen systematisch einzugrenzen
-- zwischen Codefehlern, Konfigurationsfehlern, Berechtigungsfehlern und Plattformproblemen zu unterscheiden
-- nicht alles gleichzeitig zu aendern, sondern schrittweise zu debuggen
-
-### 6. Deployment und lokale Entwicklungsumgebung
-
-Die Arbeit mit Azure Functions hat gezeigt, wie wichtig eine saubere lokale Entwicklungsumgebung ist. Dazu gehoeren:
-
-- funktionierende Toolchain
-- saubere Projektstruktur
-- korrektes Deployment aus einem einzigen Quellordner
-- reproduzierbare Schritte statt spontaner Portal-Aenderungen
-
-### 7. Infrastruktur als Code
-
-Ein sehr sinnvoller naechster Schritt waere, solche Ressourcen nicht nur manuell im Portal zu erstellen, sondern per Infrastruktur als Code, zum Beispiel mit:
-
-- Bicep
-- Terraform
-
-Damit liesse sich das Projekt deutlich reproduzierbarer und professioneller aufbauen.
 
 ## Fazit
 
