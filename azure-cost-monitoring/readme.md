@@ -188,11 +188,15 @@ Azure Kostenanalyse
 
 <img width="1430" height="804" alt="image" src="https://github.com/user-attachments/assets/9d761bfd-e9e2-49af-8cb1-722fd23de376" />
 
+<br></br>
+
 Budgetwarnung
 
 <br></br>
 
 <img width="1910" height="632" alt="image" src="https://github.com/user-attachments/assets/14fb0fe9-b302-46b4-8fd1-5aa971909ab1" />
+
+<br></br>
 
 Funktions App
 
@@ -200,10 +204,14 @@ Funktions App
 
 <img width="1691" height="318" alt="image" src="https://github.com/user-attachments/assets/9d2df610-492c-4471-82b1-8d7c7893402e" />
 
+<br></br>
+
 Erfolgreiche Logs
 
 <br></br>
 
 <img width="1078" height="764" alt="image" src="https://github.com/user-attachments/assets/4012d666-9b89-4c9f-a8cb-5019928e84c5" />
+
+<br></br>
 
 Empfangene E-Mail
