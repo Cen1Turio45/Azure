@@ -182,6 +182,8 @@ Besonders wertvoll war, dass die schwierigsten Probleme nicht einfach nur im Cod
 
 <img width="1886" height="891" alt="image" src="https://github.com/user-attachments/assets/b9144d8c-b402-41cd-89ff-b9459a9f9456" />
 
+<br></br>
+
 Azure Kostenanalyse
 
 <br></br>
