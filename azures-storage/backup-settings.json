@@ -1,0 +1,10 @@
+{
+  "sourceFolder": "C:\\Users\\lucas\\OneDrive\\Desktop\\Azure\\azure-storage\\Test",
+  "storageAccountName": "azurestorage50t",
+  "containerName": "documents",
+  "authMode": "servicePrincipal",
+  "tenantIdEnvironmentVariable": "AZURE_TENANT_ID",
+  "clientIdEnvironmentVariable": "AZURE_CLIENT_ID",
+  "clientSecretEnvironmentVariable": "AZURE_CLIENT_SECRET",
+  "logFolder": "C:\\Users\\lucas\\OneDrive\\Desktop\\Azure\\azure-storage\\logs"
+}

@@ -1,0 +1,5 @@
+logs/
+*.log
+.env
+local.settings.json
+setup-auth.local.ps1
