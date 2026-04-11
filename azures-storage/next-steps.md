@@ -25,23 +25,43 @@ Geeignete Optionen:
 
 Die Portal-Regel sollte auch als Datei dokumentiert sein. Dafuer ist `lifecycle-policy.json` im Projekt abgelegt.
 
-## 4. Logic App ergaenzen
+## 4. Azure Function konfigurieren
 
 Ziel:
 
-- jeden Morgen eine Status-Mail senden
-- Empfaenger: Administrator oder Geschaeftsfuehrer
+- bei jeder neuen `backup-status.json` eine Status-Mail senden
+- taeglich um 08:00 Uhr die 72-Stunden-Warnung pruefen
+- Empfaenger: Projektbesitzer
 - Inhalt:
   - Projektname
-  - Datum/Uhrzeit
-  - kurzer Statustext
-  - Hinweis auf Storage-Schutzfunktionen
+  - Status
+  - Datum und Uhrzeit
+  - verarbeitete Dateien
+  - Fehlermeldung
+  - Retry-Anzahl
 
-Einfachster Ablauf in Logic Apps:
+Umsetzung:
 
-1. `Recurrence` Trigger jeden Morgen
-2. optional `Compose` fuer den Mailtext
-3. `Send an email (V2)` ueber Outlook
+1. Blob Trigger fuer `status/backup-status.json`
+2. Timer Trigger fuer die 72-Stunden-Pruefung
+3. SMTP-App-Settings fuer den E-Mail-Versand
+
+## 4a. Statusdateien ergaenzen
+
+Als naechster technischer Schritt schreibt das Backup-Skript nach jedem Lauf eine aktuelle Statusdatei in den Container `status`.
+
+Geplante Dateien:
+
+- `backup-status.json`
+- `backup-status-1.json`
+- `backup-status-2.json`
+- `backup-status-3.json`
+- `backup-status-4.json`
+- `backup-status-5.json`
+- `backup-status-6.json`
+- `backup-status-7.json`
+
+Die Datei `backup-status.json` enthaelt immer den letzten Lauf. Die sieben nummerierten Dateien bilden eine feste Rotation.
 
 ## 5. Azure Backup richtig verwenden
 
@@ -56,4 +76,4 @@ Azure Backup sollte in diesem Projekt als Erweiterung sauber eingeordnet werden:
 
 Eine passende Kurzbeschreibung waere:
 
-`In diesem Projekt wurde ein Azure-Storage-basiertes Backup- und Restore-Konzept aufgebaut. Dabei wurden Blob-Versionierung, Soft Delete und Lifecycle Management eingesetzt, um Daten gegen Loeschen und Ueberschreiben zu schuetzen und Speicherkosten langfristig zu senken. Das Projekt wurde so vorbereitet, dass es um geo-redundante Replikation, Azure Backup und automatisierte Statusmeldungen per Logic Apps erweitert werden kann.`
+`In diesem Projekt wurde ein automatisiertes Backup eines lokalen Testordners nach Azure Blob Storage aufgebaut. Dabei wurden Blob-Versionierung, Soft Delete, Lifecycle Management, Service-Principal-Authentifizierung und Azure Functions eingesetzt, um Dateien zu sichern, Statusmeldungen auszuwerten und E-Mail-Benachrichtigungen bei Erfolg, Fehler oder ausbleibenden Laeufen zu versenden.`

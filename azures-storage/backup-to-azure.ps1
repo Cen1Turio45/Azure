@@ -1,10 +1,8 @@
 param(
   [string]$ConfigPath = "C:\Users\lucas\OneDrive\Desktop\Azure\azure-storage\backup-settings.json",
-  [string]$SasToken,
   [string]$TenantId,
   [string]$ClientId,
-  [string]$ClientSecret,
-  [switch]$UseAzCli
+  [string]$ClientSecret
 )
 
 $ErrorActionPreference = "Stop"
@@ -15,26 +13,34 @@ if (-not (Test-Path -LiteralPath $ConfigPath)) {
 
 $config = Get-Content -LiteralPath $ConfigPath -Raw | ConvertFrom-Json
 
+$projectName = [string]$config.projectName
 $sourceFolder = [string]$config.sourceFolder
 $storageAccountName = [string]$config.storageAccountName
 $containerName = [string]$config.containerName
-$authMode = [string]$config.authMode
-$sasEnvVar = [string]$config.sasTokenEnvironmentVariable
+$backupBlobPrefix = [string]$config.backupBlobPrefix
+$statusContainerName = [string]$config.statusContainerName
+$currentStatusBlobName = [string]$config.currentStatusBlobName
+$statusHistorySlots = [int]$config.statusHistorySlots
+$maxAttempts = [int]$config.maxAttempts
 $tenantEnvVar = [string]$config.tenantIdEnvironmentVariable
 $clientIdEnvVar = [string]$config.clientIdEnvironmentVariable
 $clientSecretEnvVar = [string]$config.clientSecretEnvironmentVariable
 $logFolder = [string]$config.logFolder
+$stateFolder = [string]$config.stateFolder
 
 if (-not (Test-Path -LiteralPath $sourceFolder)) {
   throw "Source folder not found: $sourceFolder"
 }
 
-if (-not (Test-Path -LiteralPath $logFolder)) {
-  New-Item -ItemType Directory -Path $logFolder | Out-Null
+foreach ($folder in @($logFolder, $stateFolder)) {
+  if (-not (Test-Path -LiteralPath $folder)) {
+    New-Item -ItemType Directory -Path $folder | Out-Null
+  }
 }
 
 $timestamp = Get-Date -Format "yyyy-MM-dd_HH-mm-ss"
 $logPath = Join-Path $logFolder "backup-$timestamp.log"
+$statePath = Join-Path $stateFolder "backup-state.json"
 
 function Write-Log {
   param([string]$Message)
@@ -43,68 +49,138 @@ function Write-Log {
   $line | Tee-Object -FilePath $logPath -Append
 }
 
-Write-Log "Backup started."
-Write-Log "Source folder: $sourceFolder"
-Write-Log "Storage account: $storageAccountName"
-Write-Log "Container: $containerName"
-
-$files = Get-ChildItem -LiteralPath $sourceFolder -File -Recurse
-
-if (($null -eq $files) -or ($files.Count -eq 0)) {
-  Write-Log "No files found. Nothing to upload."
-  exit 0
-}
-
-if ($UseAzCli -or $authMode -eq "azcli" -or $authMode -eq "servicePrincipal") {
+function Get-AzExecutable {
   $azCommand = Get-Command az -ErrorAction SilentlyContinue
-  $azExecutable = $null
 
   if ($null -ne $azCommand) {
-    $azExecutable = $azCommand.Source
-  } elseif (Test-Path "C:\Program Files\Microsoft SDKs\Azure\CLI2\wbin\az.cmd") {
-    $azExecutable = "C:\Program Files\Microsoft SDKs\Azure\CLI2\wbin\az.cmd"
+    return $azCommand.Source
   }
 
-  if ([string]::IsNullOrWhiteSpace($azExecutable)) {
-    throw "Azure CLI not found. Install Azure CLI or switch authMode."
+  $defaultAzPath = "C:\Program Files\Microsoft SDKs\Azure\CLI2\wbin\az.cmd"
+  if (Test-Path $defaultAzPath) {
+    return $defaultAzPath
   }
 
-  if ($authMode -eq "servicePrincipal") {
-    if ([string]::IsNullOrWhiteSpace($TenantId)) {
-      $TenantId = [Environment]::GetEnvironmentVariable($tenantEnvVar, "User")
-    }
-    if ([string]::IsNullOrWhiteSpace($TenantId)) {
-      $TenantId = [Environment]::GetEnvironmentVariable($tenantEnvVar, "Process")
-    }
-    if ([string]::IsNullOrWhiteSpace($ClientId)) {
-      $ClientId = [Environment]::GetEnvironmentVariable($clientIdEnvVar, "User")
-    }
-    if ([string]::IsNullOrWhiteSpace($ClientId)) {
-      $ClientId = [Environment]::GetEnvironmentVariable($clientIdEnvVar, "Process")
-    }
-    if ([string]::IsNullOrWhiteSpace($ClientSecret)) {
-      $ClientSecret = [Environment]::GetEnvironmentVariable($clientSecretEnvVar, "User")
-    }
-    if ([string]::IsNullOrWhiteSpace($ClientSecret)) {
-      $ClientSecret = [Environment]::GetEnvironmentVariable($clientSecretEnvVar, "Process")
-    }
+  throw "Azure CLI not found."
+}
 
-    if ([string]::IsNullOrWhiteSpace($TenantId) -or [string]::IsNullOrWhiteSpace($ClientId) -or [string]::IsNullOrWhiteSpace($ClientSecret)) {
-      throw "Missing service principal credentials. Set tenant, client id and client secret."
-    }
+function Get-RequiredSecret {
+  param(
+    [string]$ProvidedValue,
+    [string]$EnvironmentVariableName,
+    [string]$DisplayName
+  )
 
-    Write-Log "Using Azure CLI with service principal authentication."
-    & $azExecutable login --service-principal --username $ClientId --password $ClientSecret --tenant $TenantId | Tee-Object -FilePath $logPath -Append
-
-    if ($LASTEXITCODE -ne 0) {
-      throw "Azure CLI service principal login failed with exit code $LASTEXITCODE."
-    }
-  } else {
-    Write-Log "Using Azure CLI with interactive login context."
+  if (-not [string]::IsNullOrWhiteSpace($ProvidedValue)) {
+    return $ProvidedValue
   }
 
-  & $azExecutable storage blob upload-batch `
+  $value = [Environment]::GetEnvironmentVariable($EnvironmentVariableName, "User")
+  if ([string]::IsNullOrWhiteSpace($value)) {
+    $value = [Environment]::GetEnvironmentVariable($EnvironmentVariableName, "Process")
+  }
+
+  if ([string]::IsNullOrWhiteSpace($value)) {
+    throw "Missing $DisplayName. Set $EnvironmentVariableName."
+  }
+
+  return $value
+}
+
+function Get-NextHistorySlot {
+  if (-not (Test-Path -LiteralPath $statePath)) {
+    return 1
+  }
+
+  try {
+    $state = Get-Content -LiteralPath $statePath -Raw | ConvertFrom-Json
+    $lastSlot = [int]$state.lastHistorySlot
+  } catch {
+    return 1
+  }
+
+  return (($lastSlot % $statusHistorySlots) + 1)
+}
+
+function Save-HistorySlot {
+  param([int]$Slot)
+
+  $state = [ordered]@{
+    lastHistorySlot = $Slot
+    updatedAt = (Get-Date).ToString("o")
+  }
+
+  $state | ConvertTo-Json | Set-Content -LiteralPath $statePath -Encoding utf8
+}
+
+function New-StatusFile {
+  param(
+    [string]$Status,
+    [int]$ProcessedFileCount,
+    [string]$ErrorMessage,
+    [int]$RetryCount,
+    [string]$LastError
+  )
+
+  $statusPayload = [ordered]@{
+    projectName = $projectName
+    timestamp = (Get-Date).ToString("o")
+    status = $Status
+    processedFileCount = $ProcessedFileCount
+    errorMessage = $ErrorMessage
+    retryCount = $RetryCount
+    lastError = $LastError
+  }
+
+  $statusFile = Join-Path $env:TEMP "backup-status-$([Guid]::NewGuid()).json"
+  $statusPayload | ConvertTo-Json | Set-Content -LiteralPath $statusFile -Encoding utf8
+  return $statusFile
+}
+
+function Upload-StatusFile {
+  param(
+    [string]$AzExecutable,
+    [string]$StatusFile
+  )
+
+  $historySlot = Get-NextHistorySlot
+  $historyBlobName = "backup-status-$historySlot.json"
+
+  Write-Log "Uploading current status file: $currentStatusBlobName"
+  & $AzExecutable storage blob upload `
+    --account-name $storageAccountName `
+    --container-name $statusContainerName `
+    --name $currentStatusBlobName `
+    --file $StatusFile `
+    --overwrite true `
+    --auth-mode login | Tee-Object -FilePath $logPath -Append
+
+  if ($LASTEXITCODE -ne 0) {
+    throw "Could not upload $currentStatusBlobName."
+  }
+
+  Write-Log "Uploading rotated status file: $historyBlobName"
+  & $AzExecutable storage blob upload `
+    --account-name $storageAccountName `
+    --container-name $statusContainerName `
+    --name $historyBlobName `
+    --file $StatusFile `
+    --overwrite true `
+    --auth-mode login | Tee-Object -FilePath $logPath -Append
+
+  if ($LASTEXITCODE -ne 0) {
+    throw "Could not upload $historyBlobName."
+  }
+
+  Save-HistorySlot -Slot $historySlot
+}
+
+function Upload-BackupFiles {
+  param([string]$AzExecutable)
+
+  & $AzExecutable storage blob upload-batch `
     --destination $containerName `
+    --destination-path $backupBlobPrefix `
     --account-name $storageAccountName `
     --source $sourceFolder `
     --overwrite true `
@@ -113,48 +189,78 @@ if ($UseAzCli -or $authMode -eq "azcli" -or $authMode -eq "servicePrincipal") {
   if ($LASTEXITCODE -ne 0) {
     throw "Azure CLI upload failed with exit code $LASTEXITCODE."
   }
-
-  Write-Log "Backup upload completed successfully."
-  exit 0
 }
 
-if ([string]::IsNullOrWhiteSpace($SasToken)) {
-  $SasToken = [Environment]::GetEnvironmentVariable($sasEnvVar, "User")
+Write-Log "Backup started."
+Write-Log "Project: $projectName"
+Write-Log "Source folder: $sourceFolder"
+Write-Log "Storage account: $storageAccountName"
+Write-Log "Container: $containerName"
+Write-Log "Backup blob prefix: $backupBlobPrefix"
+Write-Log "Status container: $statusContainerName"
+
+$files = Get-ChildItem -LiteralPath $sourceFolder -File -Recurse
+if (($null -eq $files) -or ($files.Count -eq 0)) {
+  throw "No files found in source folder."
 }
 
-if ([string]::IsNullOrWhiteSpace($SasToken)) {
-  $SasToken = [Environment]::GetEnvironmentVariable($sasEnvVar, "Process")
+$azExecutable = Get-AzExecutable
+$TenantId = Get-RequiredSecret -ProvidedValue $TenantId -EnvironmentVariableName $tenantEnvVar -DisplayName "tenant id"
+$ClientId = Get-RequiredSecret -ProvidedValue $ClientId -EnvironmentVariableName $clientIdEnvVar -DisplayName "client id"
+$ClientSecret = Get-RequiredSecret -ProvidedValue $ClientSecret -EnvironmentVariableName $clientSecretEnvVar -DisplayName "client secret"
+
+Write-Log "Using Azure CLI with service principal authentication."
+& $azExecutable login --service-principal --username $ClientId --password $ClientSecret --tenant $TenantId | Tee-Object -FilePath $logPath -Append
+
+if ($LASTEXITCODE -ne 0) {
+  throw "Azure CLI service principal login failed with exit code $LASTEXITCODE."
 }
 
-if ([string]::IsNullOrWhiteSpace($SasToken)) {
-  throw "No SAS token provided. Set $sasEnvVar or pass -SasToken."
-}
+$attempt = 0
+$lastError = ""
+$backupSucceeded = $false
 
-if ($SasToken.StartsWith("?")) {
-  $SasToken = $SasToken.Substring(1)
-}
+while ($attempt -lt $maxAttempts -and -not $backupSucceeded) {
+  $attempt++
+  Write-Log "Backup attempt $attempt of $maxAttempts."
 
-$apiVersion = "2023-11-03"
-$storageBaseUrl = "https://$storageAccountName.blob.core.windows.net"
+  try {
+    Upload-BackupFiles -AzExecutable $azExecutable
+    $backupSucceeded = $true
+  } catch {
+    $lastError = $_.Exception.Message
+    Write-Log "Backup attempt $attempt failed: $lastError"
 
-foreach ($file in $files) {
-  $relativePath = $file.FullName.Substring($sourceFolder.Length).TrimStart("\")
-  $blobName = ($relativePath -replace "\\", "/")
-  $blobUrl = "$storageBaseUrl/$containerName/$blobName`?$SasToken"
-
-  $headers = @{
-    "x-ms-blob-type" = "BlockBlob"
-    "x-ms-version"   = $apiVersion
+    if ($attempt -lt $maxAttempts) {
+      Start-Sleep -Seconds 10
+    }
   }
+}
 
-  Invoke-RestMethod `
-    -Uri $blobUrl `
-    -Method Put `
-    -Headers $headers `
-    -InFile $file.FullName `
-    -ContentType "application/octet-stream"
+if ($backupSucceeded) {
+  $statusFile = New-StatusFile `
+    -Status "success" `
+    -ProcessedFileCount $files.Count `
+    -ErrorMessage "" `
+    -RetryCount $attempt `
+    -LastError $lastError
+} else {
+  $statusFile = New-StatusFile `
+    -Status "failed" `
+    -ProcessedFileCount 0 `
+    -ErrorMessage "Backup failed after $maxAttempts attempts." `
+    -RetryCount $attempt `
+    -LastError $lastError
+}
 
-  Write-Log "Uploaded: $blobName"
+try {
+  Upload-StatusFile -AzExecutable $azExecutable -StatusFile $statusFile
+} finally {
+  Remove-Item -LiteralPath $statusFile -Force -ErrorAction SilentlyContinue
+}
+
+if (-not $backupSucceeded) {
+  throw "Backup failed after $maxAttempts attempts. Last error: $lastError"
 }
 
 Write-Log "Backup upload completed successfully."

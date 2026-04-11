@@ -2,9 +2,11 @@
 
 Dieses Projekt baut eine kleine, praxisnahe Backup- und Restore-Basis in Azure auf.
 
+Die ausfuehrliche Projektplanung liegt in [PROJECT_PLAN.md](C:\Users\lucas\OneDrive\Desktop\Azure\azure-storage\PROJECT_PLAN.md).
+
 ## Projektziel
 
-Wichtige Unternehmensdaten sollen in Azure Blob Storage getrennt gespeichert, gegen Loeschen und Ueberschreiben geschuetzt und spaeter guenstiger abgelegt werden. Zusaetzlich wird das Projekt so vorbereitet, dass es um Logic Apps und Azure Backup erweitert werden kann.
+Ein lokaler Testordner wird taeglich automatisiert nach Azure Blob Storage gesichert. Die Dateien werden gegen Loeschen und Ueberschreiben geschuetzt. Zusaetzlich wird eine Azure Function fuer E-Mail-Benachrichtigungen bei Erfolg, Fehler und ausbleibenden Laeufen vorbereitet.
 
 ## Aktueller Stand
 
@@ -12,6 +14,8 @@ Bereits umgesetzt und getestet:
 
 - `Storage Account` erstellt
 - Container `documents` erstellt
+- Container `status` erstellt
+- Backup-Dateien werden unter `documents/backup-files/` abgelegt
 - `Versionsverwaltung fuer Blobs` aktiviert
 - `Vorlaeufiges Loeschen fuer Blobs` aktiviert
 - `Vorlaeufiges Loeschen fuer Container` aktiviert
@@ -20,6 +24,11 @@ Bereits umgesetzt und getestet:
 - Loeschen einer Datei getestet
 - Wiederherstellung per Soft Delete getestet
 - erste Lifecycle-Regel im Portal angelegt
+- Azure Function App `azure-storage` deployed
+- HTTP-Testmail erfolgreich ueber Azure Communication Services versendet
+- Statusdateien werden in den Container `status` geschrieben
+- 7er-Rotation der Statusdateien wurde getestet
+- Fehlerfall mit maximal drei Versuchen wurde getestet
 
 ## Wichtige fachliche Einordnung
 
@@ -39,6 +48,7 @@ Bereits umgesetzt und getestet:
 - [backup-settings.json](C:\Users\lucas\OneDrive\Desktop\Azure\azure-storage\backup-settings.json)
 - [register-backup-task.ps1](C:\Users\lucas\OneDrive\Desktop\Azure\azure-storage\register-backup-task.ps1)
 - [AUTOMATION.md](C:\Users\lucas\OneDrive\Desktop\Azure\azure-storage\AUTOMATION.md)
+- [function-app](C:\Users\lucas\OneDrive\Desktop\Azure\azure-storage\function-app)
 
 ## Naechster sinnvoller Ausbau
 
@@ -47,5 +57,6 @@ Bereits umgesetzt und getestet:
 - Lifecycle-Regel als Datei dokumentieren
 - lokalen taeglichen Upload bestimmter Dateien nach Azure automatisieren
 - Azure-Authentifizierung ohne SAS ueber Service Principal einrichten
-- danach Logic App fuer taegliche Status-Mail aufbauen
+- Statusdateien im Container `status` erzeugen
+- Azure Function fuer E-Mail-Benachrichtigungen konfigurieren
 - Azure Backup als Erweiterung fuer geeignete Workloads einordnen

@@ -1,0 +1,14 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "AzureWebJobsStorage": "<STORAGE_CONNECTION_STRING>",
+    "BackupStorageConnection": "<AZURESTORAGE50T_CONNECTION_STRING>",
+    "PROJECT_NAME": "Projekt 2 - Automatisiertes Backup",
+    "STATUS_CONTAINER_NAME": "status",
+    "CURRENT_STATUS_BLOB_NAME": "backup-status.json",
+    "WARNING_THRESHOLD_HOURS": "72",
+    "COMMUNICATION_SERVICES_CONNECTION_STRING": "<COMMUNICATION_SERVICES_CONNECTION_STRING>",
+    "ACS_EMAIL_SENDER": "<SENDER_ADDRESS_FROM_AZURE_COMMUNICATION_SERVICES>",
+    "MAIL_TO": "<MAIL_TO>"
+  }
+}

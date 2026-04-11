@@ -10,6 +10,8 @@ Dieses Setup erstellt ein kleines vollautomatisiertes Backup fuer ausgewaehlte D
 
 - Storage Account: `azurestorage50t`
 - Container: `documents`
+- Backup-Prefix: `backup-files/`
+- Status-Container: `status`
 
 ## Projektdateien
 
@@ -100,6 +102,7 @@ Optional mit anderer Uhrzeit:
 ## Was das jetzt leistet
 
 - täglicher Upload aller Dateien aus dem Testordner
+- Ablage der Backup-Dateien unter `documents/backup-files/`
 - Unterordner werden mit uebernommen
 - Logdateien werden lokal gespeichert
 - ein Scheduler kann automatisch eingerichtet werden
@@ -116,3 +119,15 @@ Die Logs landen unter:
 - Upload in mehrere Container
 - tägliche Status-Mail
 - Fehlerpfad mit Benachrichtigung
+
+## Azure Function App
+
+Die Function App liegt unter:
+
+- [function-app](C:\Users\lucas\OneDrive\Desktop\Azure\azure-storage\function-app)
+
+Sie enthaelt:
+
+- Blob Trigger fuer `status/backup-status.json`
+- Timer Trigger fuer die 72-Stunden-Warnung
+- SMTP-basierten E-Mail-Versand ueber App Settings

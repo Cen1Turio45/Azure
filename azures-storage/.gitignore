@@ -1,5 +1,9 @@
 logs/
+state/
 *.log
+__pycache__/
+function-app/__pycache__/
 .env
 local.settings.json
+function-app/local.settings.json
 setup-auth.local.ps1

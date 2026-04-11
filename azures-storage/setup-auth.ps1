@@ -1,13 +1,28 @@
-param()
+param(
+  [string]$TenantId,
+  [string]$ClientId,
+  [string]$ClientSecret
+)
 
 $ErrorActionPreference = "Stop"
 
-$TenantId = "<AZURE_TENANT_ID>"
-$ClientId = "<AZURE_CLIENT_ID>"
-$ClientSecret = "<AZURE_CLIENT_SECRET>"
+if ([string]::IsNullOrWhiteSpace($TenantId)) {
+  $TenantId = Read-Host "Azure Tenant ID"
+}
 
-if ($TenantId -like "<*" -or $ClientId -like "<*" -or $ClientSecret -like "<*") {
-  throw "Replace the placeholder values with your real Azure tenant, client, and client secret values before running this script."
+if ([string]::IsNullOrWhiteSpace($ClientId)) {
+  $ClientId = Read-Host "Azure Client ID"
+}
+
+if ([string]::IsNullOrWhiteSpace($ClientSecret)) {
+  $secureSecret = Read-Host "Azure Client Secret" -AsSecureString
+  $ClientSecret = [Runtime.InteropServices.Marshal]::PtrToStringAuto(
+    [Runtime.InteropServices.Marshal]::SecureStringToBSTR($secureSecret)
+  )
+}
+
+if ([string]::IsNullOrWhiteSpace($TenantId) -or [string]::IsNullOrWhiteSpace($ClientId) -or [string]::IsNullOrWhiteSpace($ClientSecret)) {
+  throw "Tenant ID, Client ID and Client Secret are required."
 }
 
 [Environment]::SetEnvironmentVariable("AZURE_TENANT_ID", $TenantId, "User")

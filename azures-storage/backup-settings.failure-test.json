@@ -2,7 +2,7 @@
   "projectName": "Projekt 2 - Automatisiertes Backup",
   "sourceFolder": "C:\\Users\\lucas\\OneDrive\\Desktop\\Azure\\azure-storage\\Test",
   "storageAccountName": "azurestorage50t",
-  "containerName": "documents",
+  "containerName": "documents-does-not-exist",
   "backupBlobPrefix": "backup-files",
   "statusContainerName": "status",
   "currentStatusBlobName": "backup-status.json",
