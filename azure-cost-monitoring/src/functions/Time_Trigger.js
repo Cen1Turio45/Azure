@@ -28,6 +28,22 @@ function getOptionalEnv(name, fallback = "") {
     return value === undefined || value === null || value === "" ? fallback : value;
 }
 
+function validateStartupConfig() {
+    const requiredEnvVars = [
+        "AZURE_SUBSCRIPTION_ID",
+        "REPORT_RECIPIENTS",
+        "COMMUNICATION_SERVICES_CONNECTION_STRING",
+        "ACS_EMAIL_FROM",
+        "IDENTITY_ENDPOINT",
+        "IDENTITY_HEADER"
+    ];
+    const missing = requiredEnvVars.filter((name) => !process.env[name]);
+
+    if (missing.length) {
+        throw new Error(`Pflicht-Umgebungsvariablen fehlen: ${missing.join(", ")}.`);
+    }
+}
+
 function getJson(url, options = {}) {
     const client = url.startsWith("https") ? https : http;
 
@@ -250,21 +266,66 @@ function normalizeCostRows(costResponse) {
     const columns = properties?.columns || [];
     const rows = properties?.rows || [];
 
+    if (!rows.length) {
+        throw new Error("Cost-Management-Antwort enthaelt keine Kostenzeilen.");
+    }
+
     const costIndex = getColumnIndex(columns, "PreTaxCost");
+
+    if (costIndex < 0) {
+        throw new Error("Pflichtspalte PreTaxCost fehlt.");
+    }
+
     const serviceIndex = getColumnIndex(columns, "ServiceName");
+
+    if (serviceIndex < 0) {
+        throw new Error("Pflichtspalte ServiceName fehlt.");
+    }
+
     const dateIndex = getColumnIndex(columns, "UsageDate");
+
+    if (dateIndex < 0) {
+        throw new Error("Pflichtspalte UsageDate fehlt.");
+    }
+
     const currencyIndex = getColumnIndex(columns, "Currency");
+
+    if (currencyIndex < 0) {
+        throw new Error("Pflichtspalte Currency fehlt.");
+    }
+
     const resourceGroupIndex = getColumnIndex(columns, "ResourceGroupName");
 
-    return rows.map((row) => {
-        const serviceName = serviceIndex >= 0 ? row[serviceIndex] : "Unbekannt";
+    return rows.map((row, rowIndex) => {
+        const serviceName = String(row[serviceIndex] || "").trim();
+        const usageDate = String(row[dateIndex] || "").trim();
+        const currency = String(row[currencyIndex] || "").trim();
+        const rawCost = row[costIndex];
+        const cost = Number(rawCost);
+
+        if (!serviceName) {
+            throw new Error(`Ungueltiger ServiceName-Wert in der Cost-Management-Antwort. Zeile: ${rowIndex + 1}.`);
+        }
+
+        if (!isValidUsageDate(usageDate)) {
+            throw new Error(`Ungueltiger UsageDate-Wert in der Cost-Management-Antwort. Zeile: ${rowIndex + 1}, Wert: ${usageDate || "<leer>"}. Erwartetes Format: YYYYMMDD.`);
+        }
+
+        if (!/^[A-Z]{3}$/.test(currency)) {
+            throw new Error(`Ungueltiger Currency-Wert in der Cost-Management-Antwort. Zeile: ${rowIndex + 1}, Wert: ${currency || "<leer>"}. Erwartetes Format: ISO-4217-Code, z. B. EUR.`);
+        }
+
+        if (!Number.isFinite(cost)) {
+            throw new Error(`Ungueltiger PreTaxCost-Wert in der Cost-Management-Antwort. Zeile: ${rowIndex + 1}, Service: ${serviceName}, UsageDate: ${usageDate}.`);
+        }
+
         return {
             serviceName,
             serviceCategory: categorizeService(serviceName),
             resourceGroupName: resourceGroupIndex >= 0 ? row[resourceGroupIndex] || "Nicht zugeordnet" : "Nicht zugeordnet",
-            cost: Number(row[costIndex] || 0),
-            usageDate: dateIndex >= 0 ? String(row[dateIndex]) : "",
-            currency: currencyIndex >= 0 ? row[currencyIndex] : "EUR"
+            cost,
+            usageDate,
+            currency
         };
     });
 }
@@ -297,6 +358,21 @@ function formatUsageDate(value) {
     }
 
     return `${value.slice(6, 8)}.${value.slice(4, 6)}.${value.slice(0, 4)}`;
+}
+
+function isValidUsageDate(value) {
+    if (!/^\d{8}$/.test(value)) {
+        return false;
+    }
+
+    const year = Number(value.slice(0, 4));
+    const month = Number(value.slice(4, 6));
+    const day = Number(value.slice(6, 8));
+    const parsed = new Date(Date.UTC(year, month - 1, day));
+
+    return parsed.getUTCFullYear() === year
+        && parsed.getUTCMonth() === month - 1
+        && parsed.getUTCDate() === day;
 }
 
 function parseUsageDate(value) {
@@ -410,7 +486,13 @@ function buildExecutiveSummary(report) {
 
 function buildReport(costResponse) {
     const costRows = normalizeCostRows(costResponse);
-    const currency = costRows[0]?.currency || "EUR";
+    const currencies = [...new Set(costRows.map((row) => row.currency))];
+
+    if (currencies.length !== 1) {
+        throw new Error(`Cost-Management-Antwort enthaelt mehrere Waehrungen: ${currencies.join(", ")}.`);
+    }
+
+    const currency = currencies[0];
     const totalCost = costRows.reduce((sum, row) => sum + row.cost, 0);
     const latestUsageDate = costRows.map((row) => row.usageDate).filter(Boolean).sort().pop();
     const thresholds = getThresholds(currency);
@@ -657,6 +739,7 @@ app.timer("Time_Trigger", {
         });
 
         try {
+            validateStartupConfig();
             const subscriptionId = getRequiredEnv("AZURE_SUBSCRIPTION_ID");
             const managementToken = await getManagedIdentityToken("https://management.azure.com/");
             const costResponse = await queryCosts(subscriptionId, managementToken);
