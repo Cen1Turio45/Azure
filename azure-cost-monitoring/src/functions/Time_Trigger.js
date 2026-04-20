@@ -315,6 +315,10 @@ function normalizeCostRows(costResponse) {
             throw new Error(`Ungueltiger Currency-Wert in der Cost-Management-Antwort. Zeile: ${rowIndex + 1}, Wert: ${currency || "<leer>"}. Erwartetes Format: ISO-4217-Code, z. B. EUR.`);
         }
 
+        if (rawCost === null || rawCost === undefined || rawCost === "") {
+            throw new Error(`Ungueltiger PreTaxCost-Wert in der Cost-Management-Antwort. Zeile: ${rowIndex + 1}, Service: ${serviceName}, UsageDate: ${usageDate}.`);
+        }
+
         if (!Number.isFinite(cost)) {
             throw new Error(`Ungueltiger PreTaxCost-Wert in der Cost-Management-Antwort. Zeile: ${rowIndex + 1}, Service: ${serviceName}, UsageDate: ${usageDate}.`);
         }
@@ -762,4 +766,10 @@ app.timer("Time_Trigger", {
         }
     }
 });
+
+module.exports = {
+    normalizeCostRows,
+    buildReport,
+    isValidUsageDate
+};
 
