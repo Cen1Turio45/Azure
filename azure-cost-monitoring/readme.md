@@ -85,6 +85,32 @@ Die Werte in der E-Mail werden direkt im Code der Function App erzeugt. Dort pas
 
 Das bedeutet auch: Wenn ich den Inhalt der E-Mail anpassen moechte, muss ich die Function selbst anpassen. Genau dort werden die Werte erzeugt, gefiltert und dargestellt.
 
+## Tests und Code Review
+
+Die zentrale Report- und Validierungslogik wird mit Node.js Unit Tests geprüft. Die Tests liegen unter:
+
+- `test/time-trigger.test.js`
+
+Ausführen:
+
+```powershell
+npm test
+```
+
+Aktuell werden unter anderem diese Fälle geprüft:
+
+- gültige Cost-Management-Antworten
+- fehlende Pflichtspalten
+- leere Cost-API-Zeilen
+- ungültige Kostenwerte
+- ungültige Datumswerte
+- ungültige Währungen
+- Fallback für fehlende Resource Groups
+- gemischte Währungen im Report
+- Gesamtkosten und Top Services
+
+Die ausführliche technische Einordnung der Review-Entscheidungen, Fehlerklassen und Testfälle steht in [Codereview.md](Codereview.md).
+
 ## Die größten Probleme im Projekt
 
 Der schwierigste Teil war nicht das Schreiben des Codes, sondern die saubere Konfiguration der Azure-Ressourcen.
