@@ -174,7 +174,7 @@ Nicht als ersten Unit-Test geeignet sind:
 
 Diese Funktionen können später über Integrations- oder Smoke-Tests abgesichert werden.
 
-### Wichtige Testfaelle
+### Wichtige Testfälle
 
 | Bereich | Testfall | Erwartung |
 | --- | --- | --- |
