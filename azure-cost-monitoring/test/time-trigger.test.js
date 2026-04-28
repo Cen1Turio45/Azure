@@ -101,6 +101,17 @@ describe("normalizeCostRows", () => {
         assert.equal(rows[0].resourceGroupName, "Nicht zugeordnet");
     });
 
+    test("uses fallback when ResourceGroupName column is missing", () => {
+        const response = buildCostResponse(
+            ["PreTaxCost", "ServiceName", "UsageDate", "Currency"],
+            [[12.34, "Azure Functions", "20260415", "EUR"]]
+        );
+
+        const rows = normalizeCostRows(response);
+
+        assert.equal(rows[0].resourceGroupName, "Nicht zugeordnet");
+    });
+
     test("fails when Currency value is not ISO code", () => {
         const response = buildCostResponse(
             ["PreTaxCost", "ServiceName", "UsageDate", "Currency", "ResourceGroupName"],
@@ -167,5 +178,104 @@ describe("buildReport", () => {
         assert.equal(report.topServices[0].totalCost, 20);
         assert.equal(report.topServices[1].serviceName, "Azure Functions");
         assert.equal(report.topServices[1].totalCost, 10);
+    });
+
+    test("aggregates duplicate services in topServices", () => {
+        const response = buildCostResponse(
+            ["PreTaxCost", "ServiceName", "UsageDate", "Currency", "ResourceGroupName"],
+            [
+                [10.00, "Storage", "20260415", "EUR", "rg-cost-monitoring"],
+                [15.00, "Storage", "20260416", "EUR", "rg-cost-monitoring"]
+            ]
+        );
+
+        const report = buildReport(response);
+
+        assert.equal(report.totalCost, 25);
+        assert.equal(report.topServices.length, 1);
+        assert.equal(report.topServices[0].serviceName, "Storage");
+        assert.equal(report.topServices[0].totalCost, 25);
+    });
+
+    test("aggregates duplicate resource groups in topResourceGroups", () => {
+        const response = buildCostResponse(
+            ["PreTaxCost", "ServiceName", "UsageDate", "Currency", "ResourceGroupName"],
+            [
+                [10.00, "Storage", "20260415", "EUR", "rg-a"],
+                [15.00, "Azure Functions", "20260416", "EUR", "rg-a"]
+            ]
+        );
+
+        const report = buildReport(response);
+
+        assert.equal(report.topResourceGroups.length, 1);
+        assert.equal(report.topResourceGroups[0].resourceGroupName, "rg-a");
+        assert.equal(report.topResourceGroups[0].totalCost, 25);
+    });
+
+    test("sets severity to hinweis when one threshold is exceeded", () => {
+        const previousThresholds = process.env.ALERT_THRESHOLDS;
+        process.env.ALERT_THRESHOLDS = "10,25,50";
+
+        try {
+            const response = buildCostResponse(
+                ["PreTaxCost", "ServiceName", "UsageDate", "Currency", "ResourceGroupName"],
+                [[20.00, "Storage", "20260415", "EUR", "rg-a"]]
+            );
+
+            const report = buildReport(response);
+
+            assert.equal(report.severity.level, "hinweis");
+        } finally {
+            if (previousThresholds === undefined) {
+                delete process.env.ALERT_THRESHOLDS;
+            } else {
+                process.env.ALERT_THRESHOLDS = previousThresholds;
+            }
+        }
+    });
+
+    test("sets severity to warnung when two thresholds are exceeded", () => {
+        const previousThresholds = process.env.ALERT_THRESHOLDS;
+        process.env.ALERT_THRESHOLDS = "10,25,50";
+
+        try {
+            const response = buildCostResponse(
+                ["PreTaxCost", "ServiceName", "UsageDate", "Currency", "ResourceGroupName"],
+                [[26.00, "Storage", "20260415", "EUR", "rg-a"]]
+            );
+
+            const report = buildReport(response);
+
+            assert.equal(report.severity.level, "warnung");
+        } finally {
+            if (previousThresholds === undefined) {
+                delete process.env.ALERT_THRESHOLDS;
+            } else {
+                process.env.ALERT_THRESHOLDS = previousThresholds;
+            }
+        }
+    });
+
+    test("sets severity to kritisch when three thresholds are exceeded", () => {
+        const previousThresholds = process.env.ALERT_THRESHOLDS;
+        process.env.ALERT_THRESHOLDS = "10,25,50";
+
+        try {
+            const response = buildCostResponse(
+                ["PreTaxCost", "ServiceName", "UsageDate", "Currency", "ResourceGroupName"],
+                [[51.00, "Storage", "20260415", "EUR", "rg-a"]]
+            );
+
+            const report = buildReport(response);
+
+            assert.equal(report.severity.level, "kritisch");
+        } finally {
+            if (previousThresholds === undefined) {
+                delete process.env.ALERT_THRESHOLDS;
+            } else {
+                process.env.ALERT_THRESHOLDS = previousThresholds;
+            }
+        }
     });
 });
