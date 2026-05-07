@@ -107,7 +107,16 @@ Aktuell werden unter anderem diese Fälle geprüft:
 - ungültige Währungen
 - Fallback für fehlende Resource Groups
 - gemischte Währungen im Report
-- Gesamtkosten und Top Services
+- Gesamtkosten, Aggregation und Top Services
+- Severity-Stufen `hinweis`, `warnung` und `kritisch`
+
+Bei der Validierung der Cost-Management-Antwort werden Fehler im Code aktuell in drei Klassen eingeordnet:
+
+- `Schemafehler` - eine Pflichtspalte wie `PreTaxCost`, `ServiceName`, `UsageDate` oder `Currency` fehlt
+- `Datenmengenfehler` - die API-Antwort enthaelt keine Kostenzeilen
+- `Wertefehler` - ein Pflichtwert ist inhaltlich ungueltig, zum Beispiel `not-a-number`, ein leeres Feld oder ein falsches Datums- oder Waehrungsformat
+
+Dadurch ist im Fehlerfall schneller erkennbar, ob das Problem bei der Struktur der API-Antwort, bei fehlenden Daten oder bei einzelnen Feldwerten liegt.
 
 Die ausführliche technische Einordnung der Review-Entscheidungen, Fehlerklassen und Testfälle steht in [Codereview.md](Codereview.md).
 

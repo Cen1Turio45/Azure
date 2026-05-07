@@ -267,31 +267,31 @@ function normalizeCostRows(costResponse) {
     const rows = properties?.rows || [];
 
     if (!rows.length) {
-        throw new Error("Cost-Management-Antwort enthaelt keine Kostenzeilen.");
+        throw new Error("Datenmengenfehler: Cost-Management-Antwort enthaelt keine Kostenzeilen.");
     }
 
     const costIndex = getColumnIndex(columns, "PreTaxCost");
 
     if (costIndex < 0) {
-        throw new Error("Pflichtspalte PreTaxCost fehlt.");
+        throw new Error("Schemafehler: Pflichtspalte PreTaxCost fehlt.");
     }
 
     const serviceIndex = getColumnIndex(columns, "ServiceName");
 
     if (serviceIndex < 0) {
-        throw new Error("Pflichtspalte ServiceName fehlt.");
+        throw new Error("Schemafehler: Pflichtspalte ServiceName fehlt.");
     }
 
     const dateIndex = getColumnIndex(columns, "UsageDate");
 
     if (dateIndex < 0) {
-        throw new Error("Pflichtspalte UsageDate fehlt.");
+        throw new Error("Schemafehler: Pflichtspalte UsageDate fehlt.");
     }
 
     const currencyIndex = getColumnIndex(columns, "Currency");
 
     if (currencyIndex < 0) {
-        throw new Error("Pflichtspalte Currency fehlt.");
+        throw new Error("Schemafehler: Pflichtspalte Currency fehlt.");
     }
 
     const resourceGroupIndex = getColumnIndex(columns, "ResourceGroupName");
@@ -304,23 +304,23 @@ function normalizeCostRows(costResponse) {
         const cost = Number(rawCost);
 
         if (!serviceName) {
-            throw new Error(`Ungueltiger ServiceName-Wert in der Cost-Management-Antwort. Zeile: ${rowIndex + 1}.`);
+            throw new Error(`Wertefehler: Ungueltiger ServiceName-Wert in der Cost-Management-Antwort. Zeile: ${rowIndex + 1}.`);
         }
 
         if (!isValidUsageDate(usageDate)) {
-            throw new Error(`Ungueltiger UsageDate-Wert in der Cost-Management-Antwort. Zeile: ${rowIndex + 1}, Wert: ${usageDate || "<leer>"}. Erwartetes Format: YYYYMMDD.`);
+            throw new Error(`Wertefehler: Ungueltiger UsageDate-Wert in der Cost-Management-Antwort. Zeile: ${rowIndex + 1}, Wert: ${usageDate || "<leer>"}. Erwartetes Format: YYYYMMDD.`);
         }
 
         if (!/^[A-Z]{3}$/.test(currency)) {
-            throw new Error(`Ungueltiger Currency-Wert in der Cost-Management-Antwort. Zeile: ${rowIndex + 1}, Wert: ${currency || "<leer>"}. Erwartetes Format: ISO-4217-Code, z. B. EUR.`);
+            throw new Error(`Wertefehler: Ungueltiger Currency-Wert in der Cost-Management-Antwort. Zeile: ${rowIndex + 1}, Wert: ${currency || "<leer>"}. Erwartetes Format: ISO-4217-Code, z. B. EUR.`);
         }
 
         if (rawCost === null || rawCost === undefined || rawCost === "") {
-            throw new Error(`Ungueltiger PreTaxCost-Wert in der Cost-Management-Antwort. Zeile: ${rowIndex + 1}, Service: ${serviceName}, UsageDate: ${usageDate}.`);
+            throw new Error(`Wertefehler: Ungueltiger PreTaxCost-Wert in der Cost-Management-Antwort. Zeile: ${rowIndex + 1}, Service: ${serviceName}, UsageDate: ${usageDate}.`);
         }
 
         if (!Number.isFinite(cost)) {
-            throw new Error(`Ungueltiger PreTaxCost-Wert in der Cost-Management-Antwort. Zeile: ${rowIndex + 1}, Service: ${serviceName}, UsageDate: ${usageDate}.`);
+            throw new Error(`Wertefehler: Ungueltiger PreTaxCost-Wert in der Cost-Management-Antwort. Zeile: ${rowIndex + 1}, Service: ${serviceName}, UsageDate: ${usageDate}.`);
         }
 
         return {

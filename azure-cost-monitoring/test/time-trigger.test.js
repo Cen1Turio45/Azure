@@ -38,7 +38,7 @@ describe("normalizeCostRows", () => {
 
         assert.throws(
             () => normalizeCostRows(response),
-            /Pflichtspalte PreTaxCost fehlt/
+            /Schemafehler: Pflichtspalte PreTaxCost fehlt/
         );
     });
 
@@ -50,7 +50,7 @@ describe("normalizeCostRows", () => {
 
         assert.throws(
             () => normalizeCostRows(response),
-            /keine Kostenzeilen/
+            /Datenmengenfehler: Cost-Management-Antwort enthaelt keine Kostenzeilen/
         );
     });
 
@@ -62,7 +62,7 @@ describe("normalizeCostRows", () => {
 
         assert.throws(
             () => normalizeCostRows(response),
-            /Ungueltiger PreTaxCost-Wert/
+            /Wertefehler: Ungueltiger PreTaxCost-Wert/
         );
     });
 
