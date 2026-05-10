@@ -660,12 +660,9 @@ async function sendWithCommunicationServices(subject, textContent, htmlContent, 
         Host: new URL(endpoint).host
     }, body);
 
-    const operationLocation = sendResponse.headers["operation-location"];
-    if (!operationLocation) {
-        throw new Error("ACS Email hat keine Operation-Location fuer das Polling geliefert.");
-    }
+    const operationLocation = getOperationLocationOrThrow(sendResponse);
 
-    const retryAfter = Number(sendResponse.headers["retry-after"] || 5);
+    const retryAfter = getRetryAfterSeconds(sendResponse);
 
     for (let attempt = 0; attempt < 10; attempt += 1) {
         if (attempt > 0) {
@@ -680,17 +677,56 @@ async function sendWithCommunicationServices(subject, textContent, htmlContent, 
             Host: new URL(operationLocation).host
         });
 
-        const status = pollResponse?.status || pollResponse?.statusCode || "Unbekannt";
-        if (status === "Succeeded") {
-            return { provider: "Azure Communication Services Email", messageId: pollResponse.id || pollResponse.operationId || "" };
-        }
-
-        if (status === "Failed" || status === "Canceled") {
-            throw new Error(`Azure Communication Services Email meldete den Status ${status}.`);
+        const pollingResult = evaluateAcsPollingStatus(pollResponse);
+        if (pollingResult.done) {
+            return { provider: "Azure Communication Services Email", messageId: pollingResult.messageId };
         }
     }
 
     throw new Error("Azure Communication Services Email konnte nicht erfolgreich abgeschlossen werden.");
+}
+
+function getOperationLocationOrThrow(sendResponse) {
+    const operationLocation = sendResponse?.headers?.["operation-location"];
+
+    if (!operationLocation) {
+        throw new Error("ACS Email hat keine Operation-Location fuer das Polling geliefert.");
+    }
+
+    return operationLocation;
+}
+
+function evaluateAcsPollingStatus(pollResponse) {
+    const status = pollResponse?.status || pollResponse?.statusCode || "Unbekannt";
+
+    if (status === "Succeeded") {
+        return {
+            done: true,
+            messageId: pollResponse.id || pollResponse.operationId || "",
+            status
+        };
+    }
+
+    if (status === "Failed" || status === "Canceled") {
+        throw new Error(`Azure Communication Services Email meldete den Status ${status}.`);
+    }
+
+    return {
+        done: false,
+        messageId: "",
+        status
+    };
+}
+
+function getRetryAfterSeconds(sendResponse) {
+    const rawRetryAfter = sendResponse?.headers?.["retry-after"];
+    const retryAfter = Number(rawRetryAfter);
+
+    if (Number.isFinite(retryAfter) && retryAfter > 0) {
+        return retryAfter;
+    }
+
+    return 5;
 }
 
 async function sendLogicAppNotification(report, subscriptionId) {
@@ -770,6 +806,10 @@ app.timer("Time_Trigger", {
 module.exports = {
     normalizeCostRows,
     buildReport,
-    isValidUsageDate
+    isValidUsageDate,
+    getOperationLocationOrThrow,
+    evaluateAcsPollingStatus,
+    getRetryAfterSeconds,
+    parseCommunicationConnectionString
 };
 

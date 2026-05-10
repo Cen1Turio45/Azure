@@ -1,7 +1,7 @@
 const assert = require("node:assert/strict");
 const { describe, test } = require("node:test");
 
-const { normalizeCostRows, buildReport, isValidUsageDate } = require("../src/functions/Time_Trigger");
+const { normalizeCostRows, buildReport, isValidUsageDate, getOperationLocationOrThrow, evaluateAcsPollingStatus, getRetryAfterSeconds, parseCommunicationConnectionString } = require("../src/functions/Time_Trigger");
 
 function buildCostResponse(columns, rows) {
     return {
@@ -277,5 +277,124 @@ describe("buildReport", () => {
                 process.env.ALERT_THRESHOLDS = previousThresholds;
             }
         }
+    });
+});
+
+describe("getOperationLocationOrThrow", () => {
+    test("fails when ACS send response has no operation-location header", () => {
+        const sendResponse = {
+            headers: {}
+        };
+
+        assert.throws(
+            () => getOperationLocationOrThrow(sendResponse),
+            /Operation-Location/
+        );
+    });
+
+    test("returns operation-location when ACS send response contains the header", () => {
+        const sendResponse = {
+            headers: {
+                "operation-location": "https://example.test/operations/123"
+            }
+        };
+
+        const operationLocation = getOperationLocationOrThrow(sendResponse);
+
+        assert.equal(operationLocation, "https://example.test/operations/123");
+    });
+});
+
+describe("evaluateAcsPollingStatus", () => {
+    test("returns done true and messageId for succeeded ACS polling status", () => {
+        const pollResponse = {
+            status: "Succeeded",
+            id: "mail-123"
+        };
+
+        const result = evaluateAcsPollingStatus(pollResponse);
+
+        assert.equal(result.done, true);
+        assert.equal(result.messageId, "mail-123");
+        assert.equal(result.status, "Succeeded");
+    });
+
+    test("throws when ACS polling status is failed", () => {
+        const pollResponse = {
+            status: "Failed"
+        };
+
+        assert.throws(
+            () => evaluateAcsPollingStatus(pollResponse),
+            /Status Failed/
+        );
+    });
+
+    test("returns done false when ACS polling status is still in progress", () => {
+        const pollResponse = {
+            status: "Running"
+        };
+
+        const result = evaluateAcsPollingStatus(pollResponse);
+
+        assert.equal(result.done, false);
+        assert.equal(result.messageId, "");
+        assert.equal(result.status, "Running");
+    });
+});
+
+describe("getRetryAfterSeconds", () => {
+    test("returns retry-after header value when it is a positive number", () => {
+        const sendResponse = {
+            headers: {
+                "retry-after": "12"
+            }
+        };
+
+        const retryAfter = getRetryAfterSeconds(sendResponse);
+
+        assert.equal(retryAfter, 12);
+    });
+
+    test("returns default retry-after when header is missing", () => {
+        const sendResponse = {
+            headers: {}
+        };
+
+        const retryAfter = getRetryAfterSeconds(sendResponse);
+
+        assert.equal(retryAfter, 5);
+    });
+
+    test("returns default retry-after when header is invalid", () => {
+        const sendResponse = {
+            headers: {
+                "retry-after": "abc"
+            }
+        };
+
+        const retryAfter = getRetryAfterSeconds(sendResponse);
+
+        assert.equal(retryAfter, 5);
+    });
+});
+
+describe("parseCommunicationConnectionString", () => {
+    test("returns endpoint and accessKey from a valid ACS connection string", () => {
+        const connectionString = "endpoint=https://example.communication.azure.com/;accesskey=abc123base64";
+
+        const result = parseCommunicationConnectionString(connectionString);
+
+        assert.equal(result.endpoint, "https://example.communication.azure.com/");
+        assert.equal(result.accessKey, "abc123base64");
+    });
+
+    test("throws when endpoint or accesskey is missing", () => {
+        const connectionString = "endpoint=https://example.communication.azure.com/;";
+
+        assert.throws(
+            () => parseCommunicationConnectionString(connectionString),
+            /endpoint und accesskey/
+        );
     });
 });
