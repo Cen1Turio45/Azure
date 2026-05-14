@@ -213,6 +213,26 @@ describe("buildReport", () => {
         assert.equal(report.topResourceGroups[0].totalCost, 25);
     });
 
+    test("filters entries that would display as 0,00 from report top lists", () => {
+        const response = buildCostResponse(
+            ["PreTaxCost", "ServiceName", "UsageDate", "Currency", "ResourceGroupName"],
+            [
+                [0.04, "Storage", "20260415", "EUR", "rg-kostenwarnung"],
+                [0.001, "Email", "20260415", "EUR", "defaultresourcegroup-dewc"],
+                [0.002, "Azure App Service", "20260415", "EUR", "azurestorage50t"]
+            ]
+        );
+
+        const report = buildReport(response);
+
+        assert.equal(report.topServices.length, 1);
+        assert.equal(report.topServices[0].serviceName, "Storage");
+        assert.equal(report.topCategories.length, 1);
+        assert.equal(report.topCategories[0].serviceCategory, "Speicher");
+        assert.equal(report.topResourceGroups.length, 1);
+        assert.equal(report.topResourceGroups[0].resourceGroupName, "rg-kostenwarnung");
+    });
+
     test("sets severity to hinweis when one threshold is exceeded", () => {
         const previousThresholds = process.env.ALERT_THRESHOLDS;
         process.env.ALERT_THRESHOLDS = "10,25,50";

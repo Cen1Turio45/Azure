@@ -347,6 +347,10 @@ function aggregateBy(items, keyName, valueName = "totalCost") {
         .sort((left, right) => right[valueName] - left[valueName]);
 }
 
+function filterDisplayableEntries(entries, valueName = "totalCost") {
+    return entries.filter((entry) => Math.abs(entry[valueName]) >= 0.005);
+}
+
 function formatCurrency(amount, currency) {
     return new Intl.NumberFormat("de-DE", {
         style: "currency",
@@ -501,9 +505,9 @@ function buildReport(costResponse) {
     const latestUsageDate = costRows.map((row) => row.usageDate).filter(Boolean).sort().pop();
     const thresholds = getThresholds(currency);
     const trend = calculateTrend(costRows);
-    const topServices = aggregateBy(costRows, "serviceName").slice(0, 10);
-    const topCategories = aggregateBy(costRows, "serviceCategory", "totalCost").slice(0, 10);
-    const topResourceGroups = aggregateBy(costRows, "resourceGroupName", "totalCost").slice(0, 10);
+    const topServices = filterDisplayableEntries(aggregateBy(costRows, "serviceName")).slice(0, 10);
+    const topCategories = filterDisplayableEntries(aggregateBy(costRows, "serviceCategory", "totalCost"), "totalCost").slice(0, 10);
+    const topResourceGroups = filterDisplayableEntries(aggregateBy(costRows, "resourceGroupName", "totalCost"), "totalCost").slice(0, 10);
     const severity = determineSeverity(totalCost, thresholds);
 
     const report = {
@@ -635,10 +639,6 @@ async function sendWithCommunicationServices(subject, textContent, htmlContent, 
     const connectionString = getRequiredEnv("COMMUNICATION_SERVICES_CONNECTION_STRING");
     const senderAddress = getRequiredEnv("ACS_EMAIL_FROM");
     const { endpoint, accessKey } = parseCommunicationConnectionString(connectionString);
-    console.log("ACS DEBUG", {
-        endpoint,
-        senderAddress
-    });
     const sendUrl = `${endpoint.replace(/\/$/, "")}/emails:send?api-version=2025-09-01`;
     const body = JSON.stringify({
         senderAddress,

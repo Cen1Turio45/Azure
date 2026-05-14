@@ -41,6 +41,8 @@ Der Ablauf im Handler ist fachlich klar aufgebaut:
 
 Dieser Ablauf zeigt gut, dass die Function nicht nur eine E-Mail verschickt, sondern vorher fachliche Daten aufbereitet.
 
+Ein wichtiger Punkt aus dem späteren Praxistest in Azure war, dass der Ablauf nicht nur lokal nachvollziehbar ist, sondern tatsächlich mit echten Cost-Management-Daten, echter Managed Identity und echtem ACS-Mailversand erfolgreich ausgeführt wurde. Genau dadurch gewinnt das Projekt deutlich an Glaubwürdigkeit.
+
 ## 3. Review der wichtigsten Funktionen
 
 ### Cost Management API
@@ -91,6 +93,8 @@ if (!Number.isFinite(cost)) {
 
 Der Vorteil: Ein fehlerhafter Datenabruf fällt sichtbar im Monitoring auf, statt dem Empfänger falsche Sicherheit zu geben.
 
+Zusätzlich wurde die Fehlersicht im Projekt später verbessert, indem diese Fehlerklassen direkt in die Fehlermeldungen aufgenommen wurden. Das ist für Support und Betrieb hilfreich, weil der Fehler nicht nur technisch vorhanden ist, sondern sofort in die richtige Suchrichtung eingeordnet werden kann.
+
 ### Kategorien und Management-Sicht
 
 Die Service-Kategorisierung ist fachlich wichtig, weil technische Azure-Service-Namen für nicht-technische Empfaenger schwer einzuordnen sind.
@@ -115,6 +119,20 @@ Damit wird aus reinen Azure-Rohdaten ein Bericht, der auch für Management und G
 - `kritisch`
 
 Diese Logik ist testbar und fachlich wertvoll, weil sie aus Zahlen eine handlungsorientierte Aussage macht.
+
+Ein weiterer praktischer Feinschliff war die Filterung von Einträgen, die im Bericht nur als `0,00 EUR` erscheinen würden. Gerade bei kleinen Azure-Umgebungen wirkt der Report dadurch deutlich fokussierter und näher an den wirklich relevanten Kosten.
+
+### Mailversand und Fehlertransparenz
+
+Ein zentraler Lernpunkt im Projekt war, dass der Mailversand nicht nur "funktioniert oder funktioniert nicht", sondern aus mehreren technisch unterschiedlichen Stationen besteht:
+
+- Connection String parsen
+- Send-Request an Azure Communication Services
+- `operation-location` lesen
+- Polling des Versandstatus
+- finalen Provider-Status auswerten
+
+Für das Projekt war es sinnvoll, genau diese Stationen in kleine testbare Teile zu zerlegen. Dadurch wurde aus einem schwer greifbaren externen Ablauf ein nachvollziehbarer und besser debugbarer Prozess.
 
 ## 4. Sicherheits- und Betriebsaspekte
 
@@ -204,6 +222,8 @@ Der Vorteil ist, dass die einzelnen Stationen des Mailversands ohne echte Provid
 
 Damit werden drei wichtige Fehlerklassen getestet: Schemafehler, Datenmengenfehler und Wertefehler.
 
+Zusätzlich werden damit erste produktionsnahe Teilprobleme des Mailversands abgedeckt, ohne direkt echte externe ACS-Kommunikation im Unit-Test zu erzwingen.
+
 ## 6. Beispiel für einen sinnvollen Unit-Test
 
 ```js
@@ -236,6 +256,8 @@ Bei Azure APIs können temporäre Fehler auftreten, zum Beispiel `429 Too Many R
 
 Das Projekt sollte echte Tests enthalten, vor allem für reine Logikfunktionen. Dadurch kann ich Änderungen an Reportlogik, Kategorien und Validierung prüfen, ohne jedes Mal eine echte Azure Function auszuführen.
 
+Inzwischen ist dieser Punkt bereits gut umgesetzt: die wichtigsten lokalen Logikbausteine des Reports und des ACS-Mailablaufs sind mit `node:test` abgesichert. Der nächste sinnvolle Ausbau wäre hier nicht mehr Quantität, sondern eher gezielte Ergänzungen nur dann, wenn neue echte Projektanforderungen dazukommen.
+
 ### 4. Secrets und App Settings sauber trennen
 
 Secrets gehören in Azure App Settings oder Key Vault, nicht ins Repository. `local.settings.json` muss lokal bleiben und darf nicht nach GitHub. Das ist für Cloud-Projekte ein wichtiger Sicherheitsstandard.
@@ -263,4 +285,4 @@ Das Projekt zeigt praxisnahes Cloud Engineering: Azure-Kosten werden über eine 
 - Wurde ein Schwellwert erreicht?
 - Sind die Eingangsdaten vertrauenswürdig?
 
-Durch gezielte Validierung, Unit-Tests und saubere Konfiguration kann aus dem Projekt eine robuste, nachvollziehbare und bewerbungstaugliche Cloud-Automatisierung werden.
+Durch gezielte Validierung, Unit-Tests, klarere Fehlerklassen, bessere Logging-Kontexte und den erfolgreichen Live-Lauf in Azure ist aus dem Projekt inzwischen eine robuste, nachvollziehbare und bewerbungstaugliche Cloud-Automatisierung geworden.

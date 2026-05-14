@@ -131,6 +131,57 @@ Auch Teile des ACS-Mailversands wurden in kleine testbare Hilfsfunktionen zerleg
 
 Die ausführliche technische Einordnung der Review-Entscheidungen, Fehlerklassen und Testfälle steht in [Codereview.md](Codereview.md).
 
+## Aktueller Projektstand
+
+Das Projekt wurde inzwischen nicht nur lokal getestet, sondern auch erfolgreich in Azure ausgeführt:
+
+- der Timer-Trigger lief in einer echten Function App
+- die Cost Management API wurde mit Managed Identity erfolgreich abgefragt
+- ein echter Kostenbericht wurde per Azure Communication Services Email verschickt
+- die Logs zeigen jetzt im Fehlerfall zusätzlich den aktuellen Hauptschritt des Ablaufs
+
+Damit ist das Projekt nicht mehr nur ein lokales Lernbeispiel, sondern ein praktisch validierter Azure-Workflow mit echten Cloud-Daten.
+
+## Was bewusst verbessert wurde
+
+Im Verlauf des Projekts wurden drei Bereiche gezielt robuster gemacht:
+
+### 1. Sauberere Fehlerklassen in der Cost-Validierung
+
+Fehler in `normalizeCostRows(...)` werden jetzt klarer eingeteilt in:
+
+- `Schemafehler`
+- `Datenmengenfehler`
+- `Wertefehler`
+
+Dadurch ist im Betrieb schneller erkennbar, ob ein Problem durch fehlende Pflichtspalten, leere API-Daten oder kaputte Feldwerte verursacht wurde.
+
+### 2. Mailversand in kleine testbare Schritte zerlegt
+
+Statt den kompletten ACS-Mailversand nur als eine große Blackbox zu behandeln, wurden mehrere kleine Schritte isoliert:
+
+- Connection String parsen
+- `operation-location` prüfen
+- Polling-Status auswerten
+- `retry-after` mit Fallback lesen
+
+Das macht den Ablauf verständlicher, besser testbar und für Troubleshooting deutlich transparenter.
+
+### 3. Berichtsausgabe mit echtem Nutzen
+
+Einträge, die im Report nur als `0,00 EUR` erscheinen würden, werden inzwischen aus den Top-Listen herausgefiltert. Dadurch bleibt der Bericht kompakter und näher an den wirklich relevanten Kostentreibern.
+
+## Bewusst offene Punkte
+
+Das Projekt ist für einen guten Portfolio-Stand weit genug, aber nicht vollständig produktionsreif. Bewusst offen geblieben sind zum Beispiel:
+
+- Retry/Backoff für die Cost Management API
+- vollständige Infrastruktur als Bicep oder Terraform
+- weitergehende Azure-Monitoring- und Alerting-Anbindung
+- tiefere Integrationstests gegen echte Azure-Dienste
+
+Diese Punkte sind sinnvolle spätere Ausbaustufen, aber nicht notwendig, um das Projekt als technisch glaubwürdiges Cloud-Projekt zu zeigen.
+
 ## Die größten Probleme im Projekt
 
 Der schwierigste Teil war nicht das Schreiben des Codes, sondern die saubere Konfiguration der Azure-Ressourcen.
