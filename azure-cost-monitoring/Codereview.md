@@ -81,11 +81,11 @@ Eine robuste Version sollte Pflichtspalten und Pflichtwerte explizit validieren:
 
 ```js
 if (costIndex < 0) {
-    throw new Error("Pflichtspalte PreTaxCost fehlt.");
+    throw new Error("Schemafehler: Pflichtspalte PreTaxCost fehlt.");
 }
 
 if (!Number.isFinite(cost)) {
-    throw new Error("Ungueltiger PreTaxCost-Wert in der Cost-Management-Antwort.");
+    throw new Error("Wertefehler: Ungueltiger PreTaxCost-Wert in der Cost-Management-Antwort.");
 }
 ```
 
@@ -174,6 +174,15 @@ Nicht als ersten Unit-Test geeignet sind:
 
 Diese Funktionen können später über Integrations- oder Smoke-Tests abgesichert werden.
 
+Statt den kompletten Mailversand direkt zu testen, ist es sinnvoller, kleine lokale Hilfsfunktionen daraus zu extrahieren und separat zu prüfen. In diesem Projekt wurden dafür unter anderem diese Teile isoliert:
+
+- `parseCommunicationConnectionString(...)`
+- `getOperationLocationOrThrow(...)`
+- `evaluateAcsPollingStatus(...)`
+- `getRetryAfterSeconds(...)`
+
+Der Vorteil ist, dass die einzelnen Stationen des Mailversands ohne echte Provider-Kommunikation nachvollziehbar und stabil testbar werden.
+
 ### Wichtige Testfälle
 
 | Bereich | Testfall | Erwartung |
@@ -187,6 +196,11 @@ Diese Funktionen können später über Integrations- oder Smoke-Tests abgesicher
 | Leere Resource Group | `ResourceGroupName = ""` | Fallback `Nicht zugeordnet` wird genutzt |
 | Ungültige Währung | `Currency = "eur"` | Function wirft einen Fehler |
 | Mehrere Währungen | EUR und USD im selben Report | `buildReport(...)` bricht ab |
+| Fehlende Operation-Location | ACS-Antwort ohne `operation-location` | Hilfsfunktion wirft einen Fehler |
+| Polling erfolgreich | ACS-Status `Succeeded` | Polling-Hilfsfunktion liefert `done = true` |
+| Polling fehlgeschlagen | ACS-Status `Failed` | Polling-Hilfsfunktion wirft einen Fehler |
+| Retry-After fehlt | kein `retry-after` Header | Default-Wert `5` wird genutzt |
+| ACS Connection String gültig | `endpoint=...;accesskey=...` | beide Werte werden korrekt gelesen |
 
 Damit werden drei wichtige Fehlerklassen getestet: Schemafehler, Datenmengenfehler und Wertefehler.
 
@@ -201,7 +215,7 @@ test("normalizeCostRows fails when PreTaxCost column is missing", () => {
 
     assert.throws(
         () => normalizeCostRows(response),
-        /Pflichtspalte PreTaxCost fehlt/
+        /Schemafehler: Pflichtspalte PreTaxCost fehlt/
     );
 });
 ```

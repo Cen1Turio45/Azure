@@ -631,6 +631,7 @@ function getRecipientList() {
 }
 
 async function sendWithCommunicationServices(subject, textContent, htmlContent, recipients) {
+    let mailStep = "ACS-Konfiguration laden";
     const connectionString = getRequiredEnv("COMMUNICATION_SERVICES_CONNECTION_STRING");
     const senderAddress = getRequiredEnv("ACS_EMAIL_FROM");
     const { endpoint, accessKey } = parseCommunicationConnectionString(connectionString);
@@ -651,39 +652,47 @@ async function sendWithCommunicationServices(subject, textContent, htmlContent, 
         }
     });
     const authHeaders = createAcsAuthorizationHeader("POST", sendUrl, body, accessKey);
-    const sendResponse = await sendRequestDetailed(sendUrl, "POST", {
-        Authorization: authHeaders.authorization,
-        "x-ms-date": authHeaders.date,
-        "x-ms-content-sha256": authHeaders.contentHash,
-        "Content-Type": "application/json",
-        "Content-Length": Buffer.byteLength(body),
-        Host: new URL(endpoint).host
-    }, body);
+    try {
+        mailStep = "ACS-Send-Request";
+        const sendResponse = await sendRequestDetailed(sendUrl, "POST", {
+            Authorization: authHeaders.authorization,
+            "x-ms-date": authHeaders.date,
+            "x-ms-content-sha256": authHeaders.contentHash,
+            "Content-Type": "application/json",
+            "Content-Length": Buffer.byteLength(body),
+            Host: new URL(endpoint).host
+        }, body);
 
-    const operationLocation = getOperationLocationOrThrow(sendResponse);
+        mailStep = "ACS-Operation-Location";
+        const operationLocation = getOperationLocationOrThrow(sendResponse);
 
-    const retryAfter = getRetryAfterSeconds(sendResponse);
+        const retryAfter = getRetryAfterSeconds(sendResponse);
 
-    for (let attempt = 0; attempt < 10; attempt += 1) {
-        if (attempt > 0) {
-            await wait(retryAfter * 1000);
+        for (let attempt = 0; attempt < 10; attempt += 1) {
+            if (attempt > 0) {
+                await wait(retryAfter * 1000);
+            }
+
+            mailStep = `ACS-Polling Versuch ${attempt + 1}`;
+            const pollHeaders = createAcsAuthorizationHeader("GET", operationLocation, "", accessKey);
+            const pollResponse = await sendRequest(operationLocation, "GET", {
+                Authorization: pollHeaders.authorization,
+                "x-ms-date": pollHeaders.date,
+                "x-ms-content-sha256": pollHeaders.contentHash,
+                Host: new URL(operationLocation).host
+            });
+
+            mailStep = `ACS-Polling-Auswertung Versuch ${attempt + 1}`;
+            const pollingResult = evaluateAcsPollingStatus(pollResponse);
+            if (pollingResult.done) {
+                return { provider: "Azure Communication Services Email", messageId: pollingResult.messageId };
+            }
         }
 
-        const pollHeaders = createAcsAuthorizationHeader("GET", operationLocation, "", accessKey);
-        const pollResponse = await sendRequest(operationLocation, "GET", {
-            Authorization: pollHeaders.authorization,
-            "x-ms-date": pollHeaders.date,
-            "x-ms-content-sha256": pollHeaders.contentHash,
-            Host: new URL(operationLocation).host
-        });
-
-        const pollingResult = evaluateAcsPollingStatus(pollResponse);
-        if (pollingResult.done) {
-            return { provider: "Azure Communication Services Email", messageId: pollingResult.messageId };
-        }
+        throw new Error("Azure Communication Services Email konnte nicht erfolgreich abgeschlossen werden.");
+    } catch (error) {
+        throw new Error(`E-Mail-Versand fehlgeschlagen bei ${mailStep}: ${error.message}`);
     }
-
-    throw new Error("Azure Communication Services Email konnte nicht erfolgreich abgeschlossen werden.");
 }
 
 function getOperationLocationOrThrow(sendResponse) {
@@ -773,18 +782,26 @@ async function sendReportEmail(report, subscriptionId) {
 app.timer("Time_Trigger", {
     schedule: "0 0 9 1 * *",
     handler: async (myTimer, context) => {
+        let currentStep = "Start";
         context.log("Azure Cost Monitoring gestartet.", {
             scheduleStatus: myTimer.scheduleStatus,
             isPastDue: myTimer.isPastDue || false
         });
 
         try {
+            currentStep = "Startup-Konfiguration";
             validateStartupConfig();
+            currentStep = "Subscription laden";
             const subscriptionId = getRequiredEnv("AZURE_SUBSCRIPTION_ID");
+            currentStep = "Managed-Identity-Token";
             const managementToken = await getManagedIdentityToken("https://management.azure.com/");
+            currentStep = "Cost-Management-API";
             const costResponse = await queryCosts(subscriptionId, managementToken);
+            currentStep = "Reportaufbau";
             const report = buildReport(costResponse);
+            currentStep = "E-Mail-Versand";
             const emailResult = await sendReportEmail(report, subscriptionId);
+            currentStep = "Logic-App-Benachrichtigung";
             const logicAppTriggered = await sendLogicAppNotification(report, subscriptionId);
 
             context.log("Kostenbericht erfolgreich erstellt.", {
@@ -797,7 +814,11 @@ app.timer("Time_Trigger", {
                 executiveSummary: report.executiveSummary
             });
         } catch (error) {
-            context.error("Azure Cost Monitoring fehlgeschlagen.", error);
+            context.error("Azure Cost Monitoring fehlgeschlagen.", {
+                step: currentStep,
+                message: error.message,
+                stack: error.stack
+            });
             throw error;
         }
     }

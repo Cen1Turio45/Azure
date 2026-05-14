@@ -109,6 +109,10 @@ Aktuell werden unter anderem diese Fälle geprüft:
 - gemischte Währungen im Report
 - Gesamtkosten, Aggregation und Top Services
 - Severity-Stufen `hinweis`, `warnung` und `kritisch`
+- ACS `operation-location`
+- ACS Polling-Status `Succeeded`, `Failed` und laufende Zwischenzustände
+- `retry-after` mit gültigem Wert und Default-Fallback
+- Parsing des ACS Connection Strings in `endpoint` und `accessKey`
 
 Bei der Validierung der Cost-Management-Antwort werden Fehler im Code aktuell in drei Klassen eingeordnet:
 
@@ -117,6 +121,13 @@ Bei der Validierung der Cost-Management-Antwort werden Fehler im Code aktuell in
 - `Wertefehler` - ein Pflichtwert ist inhaltlich ungueltig, zum Beispiel `not-a-number`, ein leeres Feld oder ein falsches Datums- oder Waehrungsformat
 
 Dadurch ist im Fehlerfall schneller erkennbar, ob das Problem bei der Struktur der API-Antwort, bei fehlenden Daten oder bei einzelnen Feldwerten liegt.
+
+Auch Teile des ACS-Mailversands wurden in kleine testbare Hilfsfunktionen zerlegt. Dadurch lassen sich Fehler im Versandablauf besser auf einzelne Stationen eingrenzen, zum Beispiel:
+
+- Connection String parsen
+- `operation-location` aus der Send-Antwort lesen
+- Polling-Status auswerten
+- `retry-after` mit Fallback behandeln
 
 Die ausführliche technische Einordnung der Review-Entscheidungen, Fehlerklassen und Testfälle steht in [Codereview.md](Codereview.md).
 
